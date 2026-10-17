@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Минималистичный фон: сквиркл с чистым цветом -->
+  <rect x="32" y="32" width="448" height="448" rx="120" fill="#0f172a"/>
+
+  <!-- Тонкий контур границы -->
+  <rect x="32" y="32" width="448" height="448" rx="120" fill="none" stroke="#334155" stroke-width="8"/>
+
+  <!-- Две дуговые стрелки бесконечного вращения (Spin Loop) -->
+  <!-- Верхняя стрелка (Индиго) -->
+  <path d="M 170 170 A 130 130 0 0 1 386 256" fill="none" stroke="#6366f1" stroke-width="44" stroke-linecap="round"/>
+  <!-- Наконечник верхней стрелки -->
+  <polygon points="386,220 426,270 366,284" fill="#6366f1"/>
+
+  <!-- Нижняя стрелка (Изумруд — вкладка Дженны) -->
+  <path d="M 342 342 A 130 130 0 0 1 126 256" fill="none" stroke="#10b981" stroke-width="44" stroke-linecap="round"/>
+  <!-- Наконечник нижней стрелки -->
+  <polygon points="126,292 86,242 146,228" fill="#10b981"/>
+
+  <!-- Центральное ядро / точка клика -->
+  <circle cx="256" cy="256" r="32" fill="#ffffff"/>
+  <circle cx="256" cy="256" r="16" fill="#6366f1"/>
+</svg>

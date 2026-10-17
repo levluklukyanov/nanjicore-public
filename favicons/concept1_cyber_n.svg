@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Базовый градиент фона (сквиркл) -->
+    <linearGradient id="bgGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+
+    <!-- Основной неон-градиент буквы N -->
+    <linearGradient id="neonN1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="40%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#d946ef"/>
+    </linearGradient>
+
+    <!-- Диагональный срез -->
+    <linearGradient id="diagGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+
+    <!-- Неоновое свечение -->
+    <filter id="glow1" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Внутреннее свечение ядра -->
+    <radialGradient id="coreGlow1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#818cf8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Фон: суперэллипс (Squircle) с тонкой кибер-рамкой -->
+  <rect x="24" y="24" width="464" height="464" rx="128" fill="url(#bgGrad1)"/>
+  <rect x="24" y="24" width="464" height="464" rx="128" fill="none" stroke="url(#neonN1)" stroke-width="6" stroke-opacity="0.5"/>
+
+  <!-- Фоновое неоновое сияние ядра -->
+  <circle cx="256" cy="256" r="160" fill="url(#coreGlow1)"/>
+
+  <!-- Монограмма «N» в стиле High-Tech Core -->
+  <g filter="url(#glow1)">
+    <!-- Левая стойка N -->
+    <path d="M128 132 C128 120, 138 112, 150 112 L182 112 C194 112, 204 122, 204 134 L204 380 C204 392, 194 400, 182 400 L150 400 C138 400, 128 390, 128 378 Z" fill="url(#neonN1)"/>
+
+    <!-- Правая стойка N -->
+    <path d="M308 134 C308 122, 318 112, 330 112 L362 112 C374 112, 384 120, 384 132 L384 378 C384 390, 374 400, 362 400 L330 400 C318 400, 308 392, 308 380 Z" fill="url(#neonN1)"/>
+
+    <!-- Диагональное ребро с острым срезом Core -->
+    <path d="M190 120 L322 366 C328 376, 338 384, 350 384 L370 384 L220 112 L190 112 Z" fill="url(#diagGrad1)" opacity="0.95"/>
+  </g>
+
+  <!-- Центральная энергетическая искра Core (Ромб) -->
+  <polygon points="256,220 286,256 256,292 226,256" fill="#ffffff" filter="url(#glow1)"/>
+  <circle cx="256" cy="256" r="6" fill="#38bdf8"/>
+</svg>

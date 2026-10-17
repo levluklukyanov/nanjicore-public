@@ -1,0 +1,41 @@
+# Vercel & Deployment
+.vercel/
+
+# Dependencies & Environments
+node_modules/
+.venv/
+venv/
+env/
+bin/
+book-card/
+cs/
+cs_learn/
+obj/
+__pycache__/
+*.py[cod]
+
+# IDE & Editor
+.vscode/
+.idea/
+
+# Local databases & sensitive runtime files
+*.db
+users.db
+logs/
+output/
+outputs/
+_temp_test_module2/
+
+# Environment variables & secrets
+.env
+.env.*
+*.env
+config.py
+ddddddd.py
+
+# Backups & temporary binaries
+*.bak
+*.exe
+*.zip
+
+

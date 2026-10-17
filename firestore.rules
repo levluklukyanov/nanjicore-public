@@ -1,0 +1,250 @@
+﻿rules_version = '2';
+
+service cloud.firestore {
+
+  match /databases/{database}/documents {
+
+    // Проверка аутентификации с подтвержденным email
+    function isAuthenticated() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // Проверка прав Создателя / Главного Администратора
+    function isCreator() {
+      return isAuthenticated() && request.auth.token.email == 'creator@example.com';
+    }
+
+    // Зарезервированные системные никнеймы
+    function isReservedUsername(name) {
+      return name.lower() in [
+        'mrebardo', 'admin', 'administrator', 'system', 
+        'root', 'creator', 'nanjicore', 'support', 'moderator'
+      ];
+    }
+
+    // Белый список разрешённых ключей при создании документа
+    function hasOnlyAllowedCreateKeys() {
+      let allowed = [
+        'id', 'username', 'tag', 'email', 'googleUid', 'isGoogle',
+        'avatarType', 'avatarColor', 'avatarImage', 'avatarPreset', 'avatarFrame',
+        'bannerType', 'bannerGradient', 'bannerImage',
+        'bio', 'moodStatus', 'favCharacter', 'playerTitle', 'telegramLink',
+        'cardStyle', 'showcaseAch', 'createdAt', 'updatedAt', 'lastSync',
+        'stats', 'data'
+      ];
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    // Белый список разрешённых изменяемых ключей при обновлении документа (не ломает существующие поля)
+    function hasOnlyAllowedUpdateKeys() {
+      let allowed = [
+        'id', 'username', 'tag',
+        'avatarType', 'avatarColor', 'avatarImage', 'avatarPreset', 'avatarFrame',
+        'bannerType', 'bannerGradient', 'bannerImage',
+        'bio', 'moodStatus', 'favCharacter', 'playerTitle', 'telegramLink',
+        'cardStyle', 'showcaseAch', 'updatedAt', 'lastSync',
+        'stats', 'data'
+      ];
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return isCreator() || affected.hasOnly(allowed);
+    }
+
+    // Запрет изменения защищенных полей аккаунта обычным игроком
+    function areProtectedFieldsUnchanged() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      let protectedKeys = [
+        'isAdmin', 'role', 'email', 'isGoogle', 'createdAt', 'googleUid',
+        'hasImportedData', 'dataImportedAt'
+      ];
+      return isCreator() || !affected.hasAny(protectedKeys);
+    }
+
+    // Запрет самовыдачи привилегий (VIP, isAdmin) и проверка допустимого титула при создании
+    function isNotSelfAssigningPrivilegesOnCreate() {
+      let d = request.resource.data;
+      let hasAdmin = 'isAdmin' in d && d.isAdmin == true;
+      let hasRootVip = 'isVip' in d && d.isVip == true;
+      let hasStatsVip = 'stats' in d && 'isVip' in d.stats && d.stats.isVip == true;
+      let title = 'playerTitle' in d ? d.playerTitle : 'none';
+      let allowedTitles = ['none', 'demon_slayer', 'wheel_master', 'pack_master', 'click_god', 'legend'];
+
+      return isCreator() || (
+        !hasAdmin && !hasRootVip && !hasStatsVip &&
+        title in allowedTitles
+      );
+    }
+
+    // Запрет самовольного изменения VIP и админского титула при обновлении
+    // (уже выданный Создателем титул сохраняется, но новые выбираются только из разрешенного списка)
+    function isPrivilegeStateUnchanged() {
+      let oldRootVip = 'isVip' in resource.data ? resource.data.isVip : false;
+      let newRootVip = 'isVip' in request.resource.data ? request.resource.data.isVip : false;
+
+      let oldStatsVip = ('stats' in resource.data && 'isVip' in resource.data.stats) ? resource.data.stats.isVip : false;
+      let newStatsVip = ('stats' in request.resource.data && 'isVip' in request.resource.data.stats) ? request.resource.data.stats.isVip : false;
+
+      let oldTitle = 'playerTitle' in resource.data ? resource.data.playerTitle : 'none';
+      let newTitle = 'playerTitle' in request.resource.data ? request.resource.data.playerTitle : 'none';
+      let allowedStandardTitles = ['none', 'demon_slayer', 'wheel_master', 'pack_master', 'click_god', 'legend'];
+
+      return isCreator() || (
+        newRootVip == oldRootVip &&
+        newStatsVip == oldStatsVip &&
+        (newTitle == oldTitle || newTitle in allowedStandardTitles)
+      );
+    }
+
+    // Проверка серверного времени синхронизации lastSync == request.time
+    function isValidLastSync() {
+      return isCreator() || (
+        'lastSync' in request.resource.data &&
+        request.resource.data.lastSync is timestamp &&
+        request.resource.data.lastSync == request.time
+      );
+    }
+
+    // Проверка, что updatedAt клиента находится в разумных пределах (±30 минут)
+    function isUpdatedAtReasonable() {
+      let hasUpdatedAt = 'updatedAt' in request.resource.data && request.resource.data.updatedAt is int;
+      return !hasUpdatedAt || (
+        request.resource.data.updatedAt >= request.time.toMillis() - 1800000 &&
+        request.resource.data.updatedAt <= request.time.toMillis() + 1800000
+      );
+    }
+
+    // Проверка корректности числовой статистики и потолков при создании
+    function areStatsValidOnCreate() {
+      let hasStats = 'stats' in request.resource.data;
+      return !hasStats || (
+        (!('tanjiroClicks' in request.resource.data.stats) || (
+          request.resource.data.stats.tanjiroClicks is int &&
+          request.resource.data.stats.tanjiroClicks >= 0 &&
+          request.resource.data.stats.tanjiroClicks <= 1000000
+        )) &&
+        (!('wheelSpins' in request.resource.data.stats) || (
+          request.resource.data.stats.wheelSpins is int &&
+          request.resource.data.stats.wheelSpins >= 0 &&
+          request.resource.data.stats.wheelSpins <= 100000
+        )) &&
+        (!('achCount' in request.resource.data.stats) || (
+          request.resource.data.stats.achCount is int &&
+          request.resource.data.stats.achCount >= 0 &&
+          request.resource.data.stats.achCount <= 50
+        ))
+      );
+    }
+
+    // Проверка корректности числовой статистики при обновлении
+    function areStatsValidOnUpdate() {
+      let hasStats = 'stats' in request.resource.data;
+      return !hasStats || (
+        (!('tanjiroClicks' in request.resource.data.stats) || (
+          request.resource.data.stats.tanjiroClicks is int &&
+          request.resource.data.stats.tanjiroClicks >= 0
+        )) &&
+        (!('wheelSpins' in request.resource.data.stats) || (
+          request.resource.data.stats.wheelSpins is int &&
+          request.resource.data.stats.wheelSpins >= 0
+        )) &&
+        (!('achCount' in request.resource.data.stats) || (
+          request.resource.data.stats.achCount is int &&
+          request.resource.data.stats.achCount >= 0 &&
+          request.resource.data.stats.achCount <= 50
+        ))
+      );
+    }
+
+    // Ограничение скорости прироста кликов по серверному lastSync (~25 кликов/сек + запас 100)
+    function isClickProgressionValid() {
+      let hasOldStats = 'stats' in resource.data;
+      let hasNewStats = 'stats' in request.resource.data;
+      let oldClicks = (hasOldStats && 'tanjiroClicks' in resource.data.stats && resource.data.stats.tanjiroClicks is int) ? resource.data.stats.tanjiroClicks : 0;
+      let newClicks = (hasNewStats && 'tanjiroClicks' in request.resource.data.stats && request.resource.data.stats.tanjiroClicks is int) ? request.resource.data.stats.tanjiroClicks : oldClicks;
+
+      let hasOldSync = 'lastSync' in resource.data && resource.data.lastSync is timestamp;
+      let rawDelta = hasOldSync ? (request.time.toMillis() - resource.data.lastSync.toMillis()) : 60000;
+      let safeDelta = rawDelta > 0 ? rawDelta : 1000;
+      let maxClickGain = (safeDelta * 25) / 1000 + 100;
+
+      return isCreator() || newClicks <= oldClicks + maxClickGain;
+    }
+
+    // Ограничение скорости вращений колеса по серверному lastSync (~5 спинов/сек + запас 20)
+    function isSpinProgressionValid() {
+      let hasOldStats = 'stats' in resource.data;
+      let hasNewStats = 'stats' in request.resource.data;
+      let oldSpins = (hasOldStats && 'wheelSpins' in resource.data.stats && resource.data.stats.wheelSpins is int) ? resource.data.stats.wheelSpins : 0;
+      let newSpins = (hasNewStats && 'wheelSpins' in request.resource.data.stats && request.resource.data.stats.wheelSpins is int) ? request.resource.data.stats.wheelSpins : oldSpins;
+
+      let hasOldSync = 'lastSync' in resource.data && resource.data.lastSync is timestamp;
+      let rawDelta = hasOldSync ? (request.time.toMillis() - resource.data.lastSync.toMillis()) : 60000;
+      let safeDelta = rawDelta > 0 ? rawDelta : 1000;
+      let maxSpinGain = (safeDelta * 5) / 1000 + 20;
+
+      return isCreator() || newSpins <= oldSpins + maxSpinGain;
+    }
+
+    // ID документа = username (в нижнем регистре)
+    match /nanj_users/{username} {
+
+      // Публичное чтение для лидерборда и профилей (пароли строго запрещены к записи)
+      allow read: if true;
+
+      // Создание профиля:
+      // - Пользователь авторизован в Google с подтвержденным email
+      // - Никнейм в документе строго совпадает с ID документа в нижнем регистре (BOLA защита)
+      // - Email совпадает с токеном Google
+      // - Запрещен захват зарезервированных системных никнеймов (mrebardo и др.)
+      // - Запрещена самовыдача VIP, isAdmin и спец-титулов
+      // - Белый список полей (hasOnly)
+      // - Обязательный серверный lastSync == request.time
+      // - Потолки начальной статистики (tanjiroClicks <= 1000000, wheelSpins <= 100000, achCount <= 50)
+      // - Поле password СТРОГО ЗАПРЕЩЕНО
+      allow create: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.resource.data.username.lower() == username
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.isGoogle == true
+                    && (!isReservedUsername(username) || isCreator())
+                    && !('password' in request.resource.data)
+                    && (isCreator() || hasOnlyAllowedCreateKeys())
+                    && isNotSelfAssigningPrivilegesOnCreate()
+                    && isValidLastSync()
+                    && isUpdatedAtReasonable()
+                    && areStatsValidOnCreate();
+
+      // Обновление профиля:
+      // - Только владелец того же Google-аккаунта ИЛИ Создатель
+      // - Изменяются только поля из белого списка affectedKeys().hasOnly(...)
+      // - Защищенные системные поля (email, createdAt, isAdmin, hasImportedData и др.) не меняются
+      // - VIP не может быть самоприсвоен, титулы только из разрешённых
+      // - Обязательный серверный lastSync == request.time
+      // - Ограничение скорости прироста кликов (~25/с) и вращений (~5/с)
+      // - Поле password СТРОГО ЗАПРЕЩЕНО
+      allow update: if (
+                      request.auth != null
+                      && request.auth.token.email_verified == true
+                      && resource.data.email == request.auth.token.email
+                      && request.resource.data.email == resource.data.email
+                      && hasOnlyAllowedUpdateKeys()
+                      && areProtectedFieldsUnchanged()
+                      && isPrivilegeStateUnchanged()
+                      && isValidLastSync()
+                      && isUpdatedAtReasonable()
+                      && !('password' in request.resource.data)
+                      && areStatsValidOnUpdate()
+                      && isClickProgressionValid()
+                      && isSpinProgressionValid()
+                    ) || isCreator();
+
+      // Удаление: только владелец своего аккаунта ИЛИ Создатель
+      allow delete: if (request.auth != null && resource.data.email == request.auth.token.email)
+                    || isCreator();
+    }
+
+    // Всё остальное в базе закрыто по умолчанию
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

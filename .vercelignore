@@ -1,0 +1,63 @@
+# Nanjicore .vercelignore
+# Файлы которые НЕ должны попасть на Vercel
+
+# Бэкапы и временные файлы
+*.bak
+*.tmp
+*.log
+
+# Бинарники и исполняемые файлы
+*.exe
+*.zip
+
+# Базы данных и дампы
+users.db
+users.json
+save.json
+finance.json
+mood.csv
+output.txt
+
+# Python файлы (не нужны на фронтенде)
+*.py
+__pycache__/
+
+# Черновики и тесты
+ddddddd.py
+cpp.cpp
+start.cs
+
+# Папки
+node_modules/
+.env
+fonts/Monocraft.ttc
+pc_remote/
+yandex_music_monitor/
+cs/
+cs_learn/
+tasks/
+templates/
+sfx_output/
+outputs/
+output/
+logs/
+bin/
+obj/
+.venv/
+.vercel/
+.vscode/
+pyxel_examples/
+_temp_test_module2/
+GP/
+
+# Тестовые HTML-страницы
+chatgpt.html
+claude.html
+gemini.html
+geomrtry.html
+rffff.html
+song.html
+yt.html
+
+# Нечитаемые кириллические файлы
+*.html.bak
